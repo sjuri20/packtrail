@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import worker from '../worker/index.js';
+const html=await (await worker.fetch(new Request('https://local/'),{})).text();
+const start=html.indexOf('function workProfileSummary('),end=html.indexOf("for(const id of [...WORK_IDS",start);
+assert(start>=0&&end>start);const context={};vm.createContext(context);vm.runInContext(html.slice(start,end),context);
+const empty={kind:'fcm',form:'',material:'',layer:'',contact:'',food:'',temperature:'',duration:'',single:'',role:''};
+const missing=context.workProfileSummary(empty,'European Union',false);assert(missing.gaps.includes('포장 형태'));assert(missing.gaps.includes('식품 접촉 여부'));
+const filled={...empty,form:'트레이',material:'PET',layer:'없음',contact:'직접 접촉',food:'기름진 식품',temperature:'상온',duration:'2시간'};
+const complete=context.workProfileSummary(filled,'European Union',false);assert.equal(complete.gaps.length,0);const usecase=context.profileUsecase(filled,'');assert(usecase.includes('재질: PET'));assert(usecase.includes('식품 직접 접촉'));assert(usecase.includes('2시간'));
+assert(context.profileUsecase({...filled,material:'종이·섬유',layer:'PE 코팅'},'').includes('PE 코팅'));
+const epr={...filled,kind:'epr',single:'일회용',role:'수입사'};const mismatch=context.workProfileSummary(epr,'European Union',false);assert(mismatch.gaps.includes('SB 54의 검색지역(캘리포니아)'));const eprText=context.profileUsecase(epr,'');assert(eprText.includes('SB 54'));assert(!eprText.includes('기름진 식품'));
+assert(context.workProfileSummary({...filled,kind:'report'},'European Union',false).gaps.includes('시험성적서 첨부'));
+console.log('Work profile, missing information, conditional fields and region checks passed.');
