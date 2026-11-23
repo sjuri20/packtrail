@@ -28,7 +28,8 @@ async function cacheRequest(path, options = {}) {
   const auth = storeKey.startsWith('sb_secret_') ? { apikey: storeKey } : { apikey: storeKey, Authorization: `Bearer ${storeKey}` };
   const response = await fetch(`${storeUrl}/rest/v1/${path}`, { ...options, headers: { ...auth, 'content-type': 'application/json', ...options.headers } });
   if (!response.ok) throw new Error('영구 저장소 연결에 실패했습니다.');
-  return response.status === 204 ? null : response.json();
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 async function loadSaved(market) {
   const rows = await cacheRequest('packtrail_discoveries?market=eq.' + encodeURIComponent(market) + '&select=market,url,title,description,published_date,last_seen_at&order=last_seen_at.desc&limit=2000');

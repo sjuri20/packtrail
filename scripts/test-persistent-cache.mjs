@@ -5,7 +5,7 @@ const original=globalThis.fetch;
 globalThis.fetch=async(url,options={})=>{
  const u=String(url);
  if(u.startsWith('https://db.test/')) {
-  if(options.method==='POST'){stored=JSON.parse(options.body);return new Response(null,{status:204})}
+  if(options.method==='POST'){stored=JSON.parse(options.body);return new Response(null,{status:201})}
   return Response.json(stored);
  }
  if(u.startsWith('https://platform.liner.com/')){linerCalls++;return Response.json({results:[{url:'https://example.org/ppwr',title:'PPWR 테스트 자료',description:'PPWR 포장재 기준'}]})}
