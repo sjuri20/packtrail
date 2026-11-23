@@ -25,7 +25,8 @@ const storeUrl = process.env.SUPABASE_URL;
 const storeKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 async function cacheRequest(path, options = {}) {
   if (!storeUrl || !storeKey) throw new Error('영구 저장소 설정이 필요합니다.');
-  const response = await fetch(`${storeUrl}/rest/v1/${path}`, { ...options, headers: { apikey: storeKey, Authorization: `Bearer ${storeKey}`, 'content-type': 'application/json', ...options.headers } });
+  const auth = storeKey.startsWith('sb_secret_') ? { apikey: storeKey } : { apikey: storeKey, Authorization: `Bearer ${storeKey}` };
+  const response = await fetch(`${storeUrl}/rest/v1/${path}`, { ...options, headers: { ...auth, 'content-type': 'application/json', ...options.headers } });
   if (!response.ok) throw new Error('영구 저장소 연결에 실패했습니다.');
   return response.status === 204 ? null : response.json();
 }
