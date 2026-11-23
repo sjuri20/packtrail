@@ -74,7 +74,7 @@ export default async function handler(req, res) {
     response.headers.forEach((value, key) => res.setHeader(key, value));
     if (target === '/' && response.ok) {
       const html = await response.text();
-      const message=storeUrl&&storeKey?'공개 시연: 수집 자료는 내용 미검증입니다. 정기 검색은 아직 연결되지 않았습니다.':'공개 시연: 영구 저장소 연결이 필요합니다. 정기 검색은 아직 연결되지 않았습니다.';
+      const message=storeUrl&&storeKey?'수집 자료는 내용 미검증입니다. 정기 검색은 아직 연결되지 않았습니다.':'영구 저장소 연결이 필요합니다. 정기 검색은 아직 연결되지 않았습니다.';
       return res.end(html.replace('<body>', '<body><div style="padding:10px;text-align:center;background:#fff4d6;color:#573900;font-size:14px">'+message+' Liner API는 본인 키를 입력해 사용하세요.</div>'));
     }
     if (target === '/api/internal-search' && response.ok) { const data=await response.json(); if(cacheError)data.warnings.push('영구 저장소에 연결되지 않아 기본 자료만 검색했습니다.'); return res.end(JSON.stringify(data)); }
