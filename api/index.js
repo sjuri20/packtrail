@@ -2,7 +2,6 @@ import { DatabaseSync } from 'node:sqlite';
 import schema from './schema.js';
 import worker from '../worker/index.js';
 
-// The public Vercel demo deliberately has no persistent data store or shared API key.
 const sqlite = new DatabaseSync(':memory:');
 sqlite.exec(schema);
 class Statement {
@@ -21,6 +20,7 @@ const DB = {
   }
 };
 const env = { DB, LINER_API_KEY: '' };
+const demoLinerKey = process.env.LINER_API_KEY?.trim() || '';
 const storeUrl = process.env.SUPABASE_URL;
 const storeKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 async function cacheRequest(path, options = {}) {
@@ -70,13 +70,21 @@ export default async function handler(req, res) {
     if (body !== undefined) { try { input = JSON.parse(String(body)); } catch {} }
     let cacheError = false;
     if (target === '/api/internal-search') { sqlite.exec('DELETE FROM live_sources'); try { await loadSaved(input.market); } catch { cacheError = true; } }
-    const response = await worker.fetch(new Request('https://packtrail.invalid' + target, { method: req.method, headers, ...(body === undefined ? {} : { body }) }), env);
+    const externalSearch = req.method === 'POST' && ['/api/search', '/api/advice'].includes(target);
+    if (demoLinerKey && target === '/api/liner/balance' && req.method === 'POST' && !headers.get('x-packtrail-liner-key')) {
+      res.statusCode = 200;
+      res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.setHeader('cache-control', 'no-store');
+      return res.end(JSON.stringify({ source: 'server', balance_usd: null }));
+    }
+    const requestEnv = externalSearch ? { ...env, LINER_API_KEY: demoLinerKey } : env;
+    const response = await worker.fetch(new Request('https://packtrail.invalid' + target, { method: req.method, headers, ...(body === undefined ? {} : { body }) }), requestEnv);
     res.statusCode = response.status;
     response.headers.forEach((value, key) => res.setHeader(key, value));
     if (target === '/' && response.ok) {
       const html = await response.text();
       const message=storeUrl&&storeKey?'수집 자료는 내용 미검증입니다. 정기 검색은 아직 연결되지 않았습니다.':'영구 저장소 연결이 필요합니다. 정기 검색은 아직 연결되지 않았습니다.';
-      return res.end(html.replace('<body>', '<body><div style="padding:10px;text-align:center;background:#fff4d6;color:#573900;font-size:14px">'+message+' Liner API는 본인 키를 입력해 사용하세요.</div>'));
+      return res.end(html.replace('<body>', '<body><div style="padding:10px;text-align:center;background:#fff4d6;color:#573900;font-size:14px">'+message+(demoLinerKey ? ' Liner 추가 검색은 키 입력 없이 사용할 수 있습니다.' : ' Liner 추가 검색은 API 키를 입력해 사용하세요.')+'</div>'));
     }
     if (target === '/api/internal-search' && response.ok) { const data=await response.json(); if(cacheError)data.warnings.push('영구 저장소에 연결되지 않아 기본 자료만 검색했습니다.'); return res.end(JSON.stringify(data)); }
     if ((target === '/api/search'||target === '/api/advice') && response.ok) {
